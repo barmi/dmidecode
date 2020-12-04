@@ -16,7 +16,7 @@ CC     ?= gcc
 # Base CFLAGS can be overridden by environment
 CFLAGS ?= -O2
 # When debugging, disable -O2 and enable -g
-#CFLAGS ?= -g
+CFLAGS ?= -g
 
 CFLAGS += -W -Wall -Wshadow -Wstrict-prototypes -Wpointer-arith -Wcast-qual \
           -Wcast-align -Wwrite-strings -Wmissing-prototypes -Winline -Wundef
@@ -74,9 +74,20 @@ ownership : ownership.o util.o
 vpddecode : vpddecode.o vpdopt.o util.o
 	$(CC) $(LDFLAGS) vpddecode.o vpdopt.o util.o -o $@
 
+libtest : libtest.o libdmidecode.a
+	$(CC) $(LDFLAGS) libtest.o libdmidecode.a -o $@
+
+libdmidecode.a : libdmidecode.o dmiopt.o dmioem.o dmioutput.o util.o
+	rm -f $@
+	ar rc $@ $libdmidecode.o dmiopt.o dmioem.o dmioutput.o util.o
+
 #
 # Objects
 #
+
+libdmidecode.o : libdmidecode.c version.h types.h util.h config.h dmidecode.h \
+	      dmiopt.h dmioem.h dmioutput.h libdmidecode.h
+	$(CC) $(CFLAGS) -c $< -o $@
 
 dmidecode.o : dmidecode.c version.h types.h util.h config.h dmidecode.h \
 	      dmiopt.h dmioem.h dmioutput.h
