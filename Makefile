@@ -14,7 +14,7 @@
 
 CC     ?= gcc
 # Base CFLAGS can be overridden by environment
-CFLAGS ?= -O2
+#CFLAGS ?= -O2
 # When debugging, disable -O2 and enable -g
 CFLAGS ?= -g
 
@@ -54,7 +54,8 @@ PROGRAMS-i686 := $(PROGRAMS-i386)
 PROGRAMS-x86_64 := biosdecode ownership vpddecode
 PROGRAMS-amd64 := $(PROGRAMS-x86_64)
 
-PROGRAMS := dmidecode $(PROGRAMS-$(MACHINE))
+#PROGRAMS := dmidecode $(PROGRAMS-$(MACHINE))
+PROGRAMS := libtest
 
 all : $(PROGRAMS)
 
@@ -79,7 +80,7 @@ libtest : libtest.o libdmidecode.a
 
 libdmidecode.a : libdmidecode.o dmiopt.o dmioem.o dmioutput.o util.o
 	rm -f $@
-	ar rc $@ $libdmidecode.o dmiopt.o dmioem.o dmioutput.o util.o
+	ar rc $@ libdmidecode.o dmiopt.o dmioem.o dmioutput.o util.o
 
 #
 # Objects

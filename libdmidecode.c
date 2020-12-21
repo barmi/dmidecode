@@ -82,6 +82,8 @@
 #include "dmioem.h"
 #include "dmioutput.h"
 
+#include "libdmidecode.h"
+
 #define out_of_spec "<OUT OF SPEC>"
 static const char *bad_index = "<BAD INDEX>";
 
@@ -93,6 +95,9 @@ static const char *bad_index = "<BAD INDEX>";
 #define SYS_FIRMWARE_DIR "/sys/firmware/dmi/tables"
 #define SYS_ENTRY_FILE SYS_FIRMWARE_DIR "/smbios_entry_point"
 #define SYS_TABLE_FILE SYS_FIRMWARE_DIR "/DMI"
+
+static char lib_result[1024];
+static int  lib_error_no = DMI_NO_ERROR;
 
 /*
  * Type-independant Stuff
@@ -451,18 +456,24 @@ static void dmi_system_uuid(void (*print_cb)(const char *name, const char *forma
 
   if (only0xFF)
   {
+    /*
     if (print_cb)
       print_cb(attr, "Not Present");
     else
-      printf("Not Present\n");
+      //printf("Not Present\n");
+    */
+    lib_error_no = DMI_ERROR_NOT_PRESENT;
     return;
   }
   if (only0x00)
   {
+    /*
     if (print_cb)
       print_cb(attr, "Not Settable");
     else
       printf("Not Settable\n");
+    */
+    lib_error_no = DMI_ERROR_NOT_SETTABLE;
     return;
   }
 
@@ -476,25 +487,29 @@ static void dmi_system_uuid(void (*print_cb)(const char *name, const char *forma
 	 */
   if (ver >= 0x0206)
   {
+    /*
     if (print_cb)
       print_cb(attr,
                "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
                p[3], p[2], p[1], p[0], p[5], p[4], p[7], p[6],
                p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15]);
     else
-      printf("%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x\n",
+    */
+      sprintf(lib_result, "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
              p[3], p[2], p[1], p[0], p[5], p[4], p[7], p[6],
              p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15]);
   }
   else
   {
+    /*
     if (print_cb)
       print_cb(attr,
                "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
                p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7],
                p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15]);
     else
-      printf("%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x\n",
+    */
+      sprintf(lib_result, "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
              p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7],
              p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15]);
   }
@@ -1261,16 +1276,20 @@ static void dmi_processor_frequency(const char *attr, const u8 *p)
 
   if (code)
   {
+    /*
     if (attr)
       pr_attr(attr, "%u MHz", code);
     else
-      printf("%u MHz\n", code);
+    */
+      sprintf(lib_result, "%u MHz", code);
   }
   else
   {
+    /*
     if (attr)
       pr_attr(attr, "Unknown");
     else
+    */
       printf("Unknown\n");
   }
 }
@@ -5133,9 +5152,9 @@ static void dmi_table_string(const struct dmi_header *h, const u8 *data, u16 ver
     }
 
     if (offset)
-      printf("%s\n", dmi_string(h, offset));
+      sprintf(lib_result, "%s", dmi_string(h, offset));
     else
-      printf("%u\n", data[4]);	/* count */
+      sprintf(lib_result, "%u", data[4]);	/* count */
     return;
   }
 
@@ -5147,26 +5166,26 @@ static void dmi_table_string(const struct dmi_header *h, const u8 *data, u16 ver
   {
     case 0x015: /* -s bios-revision */
       if (data[key - 1] != 0xFF && data[key] != 0xFF)
-        printf("%u.%u\n", data[key - 1], data[key]);
+        sprintf(lib_result, "%u.%u", data[key - 1], data[key]);
       break;
     case 0x017: /* -s firmware-revision */
       if (data[key - 1] != 0xFF && data[key] != 0xFF)
-        printf("%u.%u\n", data[key - 1], data[key]);
+        sprintf(lib_result, "%u.%u", data[key - 1], data[key]);
       break;
     case 0x108:
       dmi_system_uuid(NULL, NULL, data + offset, ver);
       break;
     case 0x305:
-      printf("%s\n", dmi_chassis_type(data[offset]));
+      sprintf(lib_result, "%s", dmi_chassis_type(data[offset]));
       break;
     case 0x406:
-      printf("%s\n", dmi_processor_family(h, ver));
+      sprintf(lib_result, "%s", dmi_processor_family(h, ver));
       break;
     case 0x416:
       dmi_processor_frequency(NULL, data + offset);
       break;
     default:
-      printf("%s\n", dmi_string(h, data[offset]));
+      sprintf(lib_result, "%s", dmi_string(h, data[offset]));
   }
 }
 
@@ -5603,7 +5622,7 @@ static int address_from_efi(off_t *address)
   return ret;
 }
 
-int main(int argc, char * const argv[])
+int test_main(int argc, char * const argv[])
 {
   int ret = 0;                /* Returned value */
   int found = 0;
@@ -5746,7 +5765,7 @@ int main(int argc, char * const argv[])
   }
   goto done;
 
-  memory_scan:
+memory_scan:
 #if defined __i386__ || defined __x86_64__
   if (!(opt.flags & FLAG_QUIET))
     pr_info("Scanning %s for entry point.", opt.devmem);
@@ -5792,13 +5811,155 @@ int main(int argc, char * const argv[])
   }
 #endif
 
-  done:
+done:
   if (!found && !(opt.flags & FLAG_QUIET))
     pr_comment("No SMBIOS nor DMI entry point found, sorry.");
 
   free(buf);
-  exit_free:
+exit_free:
   free(opt.type);
 
   return ret;
+}
+
+char* dmidecode_get_baseboard_serial_number()
+{
+  int found = 0;
+  off_t fp;
+  size_t size;
+  int efi;
+  u8 *buf = NULL;
+
+  static const struct string_keyword opt_string_keyword =
+      { "baseboard-serial-number", 2, 0x07 };
+
+  if (sizeof(u8) != 1 || sizeof(u16) != 2 || sizeof(u32) != 4 || '\0' != 0)
+  {
+    lib_error_no = DMI_ERROR_COMPILER_COMPATIBLE;
+    return NULL;
+  }
+
+  /* Set default option values */
+  opt.devmem = DEFAULT_MEM_DEV;
+  opt.flags = 0;
+  opt.handle = ~0U;
+  opt.string = &opt_string_keyword;
+  opt.flags |= FLAG_QUIET;
+
+  /*
+	 * First try reading from sysfs tables.  The entry point file could
+	 * contain one of several types of entry points, so read enough for
+	 * the largest one, then determine what type it contains.
+	 */
+  size = 0x20;
+  if (!(opt.flags & FLAG_NO_SYSFS)
+      && (buf = read_file(0, &size, SYS_ENTRY_FILE)) != NULL)
+  {
+    if (size >= 24 && memcmp(buf, "_SM3_", 5) == 0)
+    {
+      if (smbios3_decode(buf, SYS_TABLE_FILE, FLAG_NO_FILE_OFFSET))
+        found++;
+    }
+    else if (size >= 31 && memcmp(buf, "_SM_", 4) == 0)
+    {
+      if (smbios_decode(buf, SYS_TABLE_FILE, FLAG_NO_FILE_OFFSET))
+        found++;
+    }
+    else if (size >= 15 && memcmp(buf, "_DMI_", 5) == 0)
+    {
+      if (legacy_decode(buf, SYS_TABLE_FILE, FLAG_NO_FILE_OFFSET))
+        found++;
+    }
+
+    if (found)
+      goto done;
+  }
+
+  /* Next try EFI (ia64, Intel-based Mac, arm64) */
+  efi = address_from_efi(&fp);
+  switch (efi)
+  {
+    case EFI_NOT_FOUND:
+      goto memory_scan;
+    case EFI_NO_SMBIOS:
+      //ret = 1;
+      lib_error_no = DMI_ERROR_EFI_NO_SMBIOS;
+      goto exit_free;
+  }
+
+  if ((buf = mem_chunk(fp, 0x20, opt.devmem)) == NULL)
+  {
+    //ret = 1;
+    lib_error_no = DMI_ERROR_EFI_MEM_CHUNK_NULL;
+    goto exit_free;
+  }
+
+  if (memcmp(buf, "_SM3_", 5) == 0)
+  {
+    if (smbios3_decode(buf, opt.devmem, 0))
+      found++;
+  }
+  else if (memcmp(buf, "_SM_", 4) == 0)
+  {
+    if (smbios_decode(buf, opt.devmem, 0))
+      found++;
+  }
+  goto done;
+
+memory_scan:
+#if defined __i386__ || defined __x86_64__
+  /* Fallback to memory scan (x86, x86_64) */
+  if ((buf = mem_chunk(0xF0000, 0x10000, opt.devmem)) == NULL)
+  {
+    //ret = 1;
+    lib_error_no = DMI_ERROR_MEM_CHUNK_NULL;
+    goto exit_free;
+  }
+
+  /* Look for a 64-bit entry point first */
+  for (fp = 0; fp <= 0xFFE0; fp += 16)
+  {
+    if (memcmp(buf + fp, "_SM3_", 5) == 0)
+    {
+      if (smbios3_decode(buf + fp, opt.devmem, 0))
+      {
+        found++;
+        goto done;
+      }
+    }
+  }
+
+  /* If none found, look for a 32-bit entry point */
+  for (fp = 0; fp <= 0xFFF0; fp += 16)
+  {
+    if (memcmp(buf + fp, "_SM_", 4) == 0 && fp <= 0xFFE0)
+    {
+      if (smbios_decode(buf + fp, opt.devmem, 0))
+      {
+        found++;
+        goto done;
+      }
+    }
+    else if (memcmp(buf + fp, "_DMI_", 5) == 0)
+    {
+      if (legacy_decode(buf + fp, opt.devmem, 0))
+      {
+        found++;
+        goto done;
+      }
+    }
+  }
+#endif
+
+done:
+  free(buf);
+exit_free:
+  free(opt.type);
+
+  return lib_result;
+}
+
+int dmidecode_get_last_error()
+{
+  return lib_error_no;
 }
